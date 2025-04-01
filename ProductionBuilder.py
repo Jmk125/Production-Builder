@@ -14,8 +14,11 @@ class LaborSimulatorApp:
 
     def create_widgets(self):
         ttk.Label(self.root, text="Simulation Name:").grid(row=0, column=0, sticky="w")
-        self.sim_name_entry = ttk.Entry(self.root, width=40)
-        self.sim_name_entry.grid(row=0, column=1, columnspan=3, pady=5, sticky="w")
+        self.sim_name_entry = ttk.Entry(self.root, width=30)
+        self.sim_name_entry.grid(row=0, column=1, pady=5, sticky="w")
+
+        self.restart_button = ttk.Button(self.root, text="🔄 Restart", command=self.restart)
+        self.restart_button.grid(row=0, column=2, padx=5, pady=5, sticky="w")
 
         ttk.Label(self.root, text="Crew:").grid(row=1, column=0, sticky="w")
         self.add_worker_button = ttk.Button(self.root, text="➕ Add Worker", command=self.add_worker)
@@ -53,6 +56,15 @@ class LaborSimulatorApp:
             "name_var": name_var,
             "efficiency_var": efficiency_var
         })
+
+        # Update existing tasks with the new worker checkboxes
+        for task in self.tasks:
+            task_row_frame = task["task_row_frame"]
+            var = tk.BooleanVar()
+            cb = ttk.Checkbutton(task_row_frame, text=name_var.get() or f"Worker {len(self.workers)}", variable=var)
+            cb.grid(row=0, column=2+len(task["assigned_workers"]), padx=3)
+            task["assigned_workers"].append(var)
+            var.trace_add("write", task["update_adjusted_time"])
 
     def add_task(self):
         row = len(self.tasks)
@@ -128,12 +140,14 @@ class LaborSimulatorApp:
             worker["efficiency_var"].trace_add("write", update_adjusted_time)
 
         self.tasks.append({
+            "task_row_frame": task_row_frame,
             "task_name_var": task_name_var,
             "assigned_workers": assigned_workers,
             "base_time_var": base_time_var,
             "time_unit_var": time_unit_var,
             "material_unit_var": material_unit_var,
-            "result_label": result_label
+            "result_label": result_label,
+            "update_adjusted_time": update_adjusted_time
         })
 
     def setup_output_section(self):
@@ -278,6 +292,29 @@ class LaborSimulatorApp:
         except Exception as e:
             self.final_output_label.config(text="Total Time: ???")
             self.breakdown_label.config(text="Calculation Error")
+
+    def restart(self):
+        self.workers.clear()
+        self.tasks.clear()
+        self.impact_entries.clear()
+        for widget in self.worker_frame.winfo_children():
+            widget.destroy()
+        for widget in self.task_frame.winfo_children():
+            widget.destroy()
+        for widget in self.impact_frame.winfo_children():
+            widget.destroy()
+        self.sim_name_entry.delete(0, tk.END)
+        self.length_var.set(0)
+        self.height_var.set(0)
+        self.target_area_var.set(0)
+        self.time_display_unit.set("minutes")
+        self.output_type_var.set("Square-foot")
+        self.material_unit_display.config(state="normal")
+        self.material_unit_display.delete(0, tk.END)
+        self.material_unit_display.config(state="readonly")
+        self.final_output_label.config(text="Total Time: ???")
+        self.breakdown_label.config(text="")
+        self.update_output()
 
 def main():
     root = tk.Tk()
