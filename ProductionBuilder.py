@@ -537,35 +537,41 @@ class LaborSimulatorApp:
                 )
 
             elif mode == "Man Day (SF)":
-                total_available_time = 8 * 60  # 8 hours in minutes
+                # Calculate man-day as 8 hours per worker
+                hours_per_worker = 8
+                total_available_time = hours_per_worker * 60 * total_workers  # Convert to minutes
                 effective_time = total_available_time - impact_time
                 units_completed = effective_time / total_time_per_unit if total_time_per_unit > 0 else 0
                 sqft_completed = units_completed * unit_sqft
 
-                breakdown += f"\nAvailable time: 8 hrs = {total_available_time} min"
+                breakdown += f"\nCrew size: {total_workers} workers × 8 hours = {total_workers * 8} work hours"
+                breakdown += f"\nTotal available time: {total_available_time} minutes"
                 breakdown += f"\n- Impacts: {impact_time:.2f} min → Working time = {effective_time:.2f} min"
                 breakdown += f"\nTime per unit: {total_time_per_unit:.2f} min"
                 breakdown += f"\nUnits completed: {effective_time:.2f} ÷ {total_time_per_unit:.2f} = {units_completed:.2f}"
                 breakdown += f"\nUnit size: {unit_sqft:.2f} sqft → Total: {sqft_completed:.2f} sqft"
 
                 self.final_output_label.config(
-                    text=f"Total Production: {sqft_completed:.2f} sqft installed in 1 Man Day"
+                    text=f"Total Production: {sqft_completed:.2f} sqft installed in 1 Man Day ({total_workers} workers)"
                 )
                 
             elif mode == "Man Day (LF)":
-                total_available_time = 8 * 60  # 8 hours in minutes
+                # Calculate man-day as 8 hours per worker
+                hours_per_worker = 8
+                total_available_time = hours_per_worker * 60 * total_workers  # Convert to minutes
                 effective_time = total_available_time - impact_time
                 units_completed = effective_time / total_time_per_unit if total_time_per_unit > 0 else 0
                 lf_completed = units_completed * unit_length  # Linear feet completed
 
-                breakdown += f"\nAvailable time: 8 hrs = {total_available_time} min"
+                breakdown += f"\nCrew size: {total_workers} workers × 8 hours = {total_workers * 8} work hours"
+                breakdown += f"\nTotal available time: {total_available_time} minutes"
                 breakdown += f"\n- Impacts: {impact_time:.2f} min → Working time = {effective_time:.2f} min"
                 breakdown += f"\nTime per unit: {total_time_per_unit:.2f} min"
                 breakdown += f"\nUnits completed: {effective_time:.2f} ÷ {total_time_per_unit:.2f} = {units_completed:.2f}"
                 breakdown += f"\nUnit length: {unit_length:.2f} lf → Total: {lf_completed:.2f} linear feet"
 
                 self.final_output_label.config(
-                    text=f"Total Production: {lf_completed:.2f} linear feet installed in 1 Man Day"
+                    text=f"Total Production: {lf_completed:.2f} linear feet installed in 1 Man Day ({total_workers} workers)"
                 )
 
             self.breakdown_label.config(text=breakdown)
@@ -638,13 +644,14 @@ class LaborSimulatorApp:
             
             # Simulation settings
             mode = self.output_type_var.get()
+            current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             settings_data = [{
                 "Simulation Name": self.sim_name_entry.get(),
                 "Output Type": mode,
                 "Length (ft)": self.length_var.get(),
                 "Time Display Unit": self.time_display_unit.get(),
-                "Export Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "User": "Jmk125",  # Hardcoded username from your requirements
+                "Export Date": current_date,
+                "User": "Jmk125",  # Hardcoded username
                 "Version": self.VERSION
             }]
             
@@ -791,16 +798,24 @@ class LaborSimulatorApp:
                         "Notes": f"Converted to hours: {total_time/60:.2f}"
                     })
             elif mode == "Man Day (SF)":
-                total_available_time = 8 * 60  # 8 hours in minutes
+                # Calculate man-day as 8 hours per worker
+                hours_per_worker = 8
+                total_available_time = hours_per_worker * 60 * total_workers  # Minutes
                 effective_time = total_available_time - impact_time
                 units_completed = effective_time / total_time_per_unit if total_time_per_unit > 0 else 0
                 sqft_completed = units_completed * unit_sqft
                 
                 results_data.append({
                     "Category": "Summary",
+                    "Name": "Crew Size",
+                    "Time (min)": None,
+                    "Notes": f"{total_workers} workers × 8 hours = {total_workers * 8} work hours"
+                })
+                results_data.append({
+                    "Category": "Summary",
                     "Name": "Available Time",
                     "Time (min)": total_available_time,
-                    "Notes": "8 hours = 480 minutes"
+                    "Notes": f"{total_workers} workers × 8 hours = {total_available_time} minutes"
                 })
                 results_data.append({
                     "Category": "Summary",
@@ -821,16 +836,24 @@ class LaborSimulatorApp:
                     "Notes": f"{sqft_completed:.2f} sqft ({units_completed:.2f} units × {unit_sqft:.2f} sqft/unit)"
                 })
             elif mode == "Man Day (LF)":
-                total_available_time = 8 * 60  # 8 hours in minutes
+                # Calculate man-day as 8 hours per worker
+                hours_per_worker = 8
+                total_available_time = hours_per_worker * 60 * total_workers  # Minutes
                 effective_time = total_available_time - impact_time
                 units_completed = effective_time / total_time_per_unit if total_time_per_unit > 0 else 0
                 lf_completed = units_completed * unit_length
                 
                 results_data.append({
                     "Category": "Summary",
+                    "Name": "Crew Size",
+                    "Time (min)": None,
+                    "Notes": f"{total_workers} workers × 8 hours = {total_workers * 8} work hours"
+                })
+                results_data.append({
+                    "Category": "Summary",
                     "Name": "Available Time",
                     "Time (min)": total_available_time,
-                    "Notes": "8 hours = 480 minutes"
+                    "Notes": f"{total_workers} workers × 8 hours = {total_available_time} minutes"
                 })
                 results_data.append({
                     "Category": "Summary",
