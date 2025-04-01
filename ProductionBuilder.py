@@ -6,9 +6,11 @@ import os
 from datetime import datetime
 
 class LaborSimulatorApp:
+    VERSION = "V1.0"
+    
     def __init__(self, root):
         self.root = root
-        self.root.title("Construction Labor Simulator")
+        self.root.title(f"Construction Labor Simulator {self.VERSION}")
 
         self.workers = []
         self.tasks = []
@@ -61,31 +63,49 @@ class LaborSimulatorApp:
         self.output_frame.grid(row=5, column=0, columnspan=4, sticky="we", padx=10, pady=10)
 
         self.setup_output_section()
+        
+        # Add version label at the bottom
+        version_frame = ttk.Frame(self.root)
+        version_frame.grid(row=6, column=0, columnspan=4, sticky="ew", padx=10, pady=(5, 10))
+        version_label = ttk.Label(
+            version_frame, 
+            text=f"Construction Labor Simulator {self.VERSION} | © 2025 Jmk125",
+            foreground="gray"
+        )
+        version_label.pack(side=tk.RIGHT)
 
     def setup_output_section(self):
         ttk.Label(self.output_frame, text="Output Type:").grid(row=0, column=0, sticky="w")
         self.output_type_var = tk.StringVar(value="Square-foot")
         output_dropdown = ttk.Combobox(self.output_frame, textvariable=self.output_type_var,
-                                       values=["Square-foot", "Man Day"], state="readonly")
+                                       values=["Square-foot", "Linear-Foot", "Man Day (SF)", "Man Day (LF)"], state="readonly")
         output_dropdown.grid(row=0, column=1, sticky="w")
-        output_dropdown.bind("<<ComboboxSelected>>", lambda e: self.update_output())
+        output_dropdown.bind("<<ComboboxSelected>>", lambda e: self.update_output_mode())
 
         ttk.Label(self.output_frame, text="Material Unit:").grid(row=1, column=0, sticky="e")
         self.material_unit_display = ttk.Entry(self.output_frame, state="readonly", width=15)
         self.material_unit_display.grid(row=1, column=1, padx=5, sticky="w")
 
-        ttk.Label(self.output_frame, text="Length (ft):").grid(row=1, column=2, sticky="e")
+        # Length and height row (will show/hide based on mode)
+        self.dimensions_frame = ttk.Frame(self.output_frame)
+        self.dimensions_frame.grid(row=1, column=2, columnspan=4, sticky="w")
+
+        ttk.Label(self.dimensions_frame, text="Length (ft):").grid(row=0, column=0, sticky="e")
         self.length_var = tk.DoubleVar(value=0)
-        ttk.Entry(self.output_frame, textvariable=self.length_var, width=7).grid(row=1, column=3)
+        ttk.Entry(self.dimensions_frame, textvariable=self.length_var, width=7).grid(row=0, column=1)
 
-        ttk.Label(self.output_frame, text="Height (ft):").grid(row=1, column=4, sticky="e")
+        # Height label and entry (will be hidden for Linear-Foot mode)
+        self.height_label = ttk.Label(self.dimensions_frame, text="Height (ft):")
+        self.height_label.grid(row=0, column=2, sticky="e")
         self.height_var = tk.DoubleVar(value=0)
-        ttk.Entry(self.output_frame, textvariable=self.height_var, width=7).grid(row=1, column=5)
+        self.height_entry = ttk.Entry(self.dimensions_frame, textvariable=self.height_var, width=7)
+        self.height_entry.grid(row=0, column=3)
 
+        # Target area/length label and entry
         self.target_label = ttk.Label(self.output_frame, text="Target Area (sqft):")
         self.target_label.grid(row=2, column=0, sticky="e")
-        self.target_area_var = tk.DoubleVar(value=0)
-        self.target_entry = ttk.Entry(self.output_frame, textvariable=self.target_area_var, width=10)
+        self.target_var = tk.DoubleVar(value=0)
+        self.target_entry = ttk.Entry(self.output_frame, textvariable=self.target_var, width=10)
         self.target_entry.grid(row=2, column=1)
 
         ttk.Label(self.output_frame, text="Display Time In:").grid(row=2, column=2, sticky="e")
@@ -105,18 +125,47 @@ class LaborSimulatorApp:
 
         self.length_var.trace_add("write", lambda *args: self.update_output())
         self.height_var.trace_add("write", lambda *args: self.update_output())
-        self.target_area_var.trace_add("write", lambda *args: self.update_output())
+        self.target_var.trace_add("write", lambda *args: self.update_output())
         self.time_display_unit.trace_add("write", lambda *args: self.update_output())
-        self.output_type_var.trace_add("write", lambda *args: self.toggle_target_input())
+        
+        # Initial UI setup based on default mode
+        self.update_output_mode()
 
-    def toggle_target_input(self):
+    def update_output_mode(self):
+        """Update UI based on the selected output mode."""
         mode = self.output_type_var.get()
-        if mode == "Man Day":
+        
+        # Configure target field label and UI elements based on mode
+        if mode == "Square-foot":
+            self.target_label.config(text="Target Area (sqft):")
+            self.target_entry.grid()
+            self.height_label.grid()
+            self.height_entry.grid()
+        elif mode == "Linear-Foot":
+            self.target_label.config(text="Target Length (lf):")
+            self.target_entry.grid()
+            self.height_label.grid_remove()
+            self.height_entry.grid_remove()
+        elif mode == "Man Day (SF)":
             self.target_label.grid_remove()
             self.target_entry.grid_remove()
-        else:
-            self.target_label.grid()
-            self.target_entry.grid()
+            self.height_label.grid()
+            self.height_entry.grid()
+        elif mode == "Man Day (LF)":
+            self.target_label.grid_remove()
+            self.target_entry.grid_remove()
+            self.height_label.grid_remove()
+            self.height_entry.grid_remove()
+        
+        # Update calculations
+        self.update_output()
+
+    def toggle_target_input(self):
+        """
+        Legacy method kept for compatibility.
+        Use update_output_mode() instead for new code.
+        """
+        self.update_output_mode()
 
     def save_simulation(self):
         """Save the current simulation to a JSON file."""
@@ -130,9 +179,10 @@ class LaborSimulatorApp:
                 "output_type": self.output_type_var.get(),
                 "length": self.length_var.get(),
                 "height": self.height_var.get(),
-                "target_area": self.target_area_var.get(),
+                "target": self.target_var.get(),
                 "time_display_unit": self.time_display_unit.get()
-            }
+            },
+            "version": self.VERSION
         }
         
         # Ask for a save location if not already saving to a file
@@ -229,14 +279,32 @@ class LaborSimulatorApp:
                 
             # Load output settings
             output_settings = simulation_data.get("output_settings", {})
-            self.output_type_var.set(output_settings.get("output_type", "Square-foot"))
+            
+            # Handle backward compatibility for renamed "Man Day" option
+            output_type = output_settings.get("output_type", "Square-foot")
+            if output_type == "Man Day":
+                output_type = "Man Day (SF)"
+            self.output_type_var.set(output_type)
+            
             self.length_var.set(output_settings.get("length", 0))
             self.height_var.set(output_settings.get("height", 0))
-            self.target_area_var.set(output_settings.get("target_area", 0))
+            
+            # Support for both old and new formats
+            if "target_area" in output_settings:
+                self.target_var.set(output_settings.get("target_area", 0))
+            else:
+                self.target_var.set(output_settings.get("target", 0))
+                
             self.time_display_unit.set(output_settings.get("time_display_unit", "minutes"))
             
+            # Check if the version is compatible
+            file_version = simulation_data.get("version", "V1.0")
+            if file_version != self.VERSION:
+                messagebox.showwarning("Version Mismatch", 
+                    f"The file was created with version {file_version}, current version is {self.VERSION}. Some features may not work correctly.")
+            
             # Update UI based on loaded data
-            self.update_output()
+            self.update_output_mode()
             messagebox.showinfo("Success", f"Simulation loaded from {file_path}")
             
         except Exception as e:
@@ -404,7 +472,9 @@ class LaborSimulatorApp:
             self.material_unit_display.insert(0, material_unit)
             self.material_unit_display.config(state="readonly")
 
-            unit_sqft = self.length_var.get() * self.height_var.get()
+            unit_length = self.length_var.get()
+            unit_height = self.height_var.get()
+            unit_sqft = unit_length * unit_height
             total_workers = len(self.workers)
 
             total_time_per_unit = 0
@@ -432,7 +502,7 @@ class LaborSimulatorApp:
 
             mode = self.output_type_var.get()
             if mode == "Square-foot":
-                total_area = self.target_area_var.get()
+                total_area = self.target_var.get()
                 units_needed = total_area / unit_sqft if unit_sqft > 0 else 0
                 total_time = total_time_per_unit * units_needed + impact_time
                 breakdown += f"\nUnits needed: {units_needed:.2f} → Task time: {total_time_per_unit:.2f} × {units_needed:.2f} = {total_time_per_unit * units_needed:.2f} min"
@@ -445,8 +515,28 @@ class LaborSimulatorApp:
                 self.final_output_label.config(
                     text=f"Total Time: {total_time:.2f} {self.time_display_unit.get()} to complete {total_area:.0f} sqft"
                 )
+                
+            elif mode == "Linear-Foot":
+                target_length = self.target_var.get()
+                # For linear foot, units needed is directly target_length / unit_length
+                units_needed = target_length / unit_length if unit_length > 0 else 0
+                total_time = total_time_per_unit * units_needed + impact_time
+                
+                breakdown += f"\nTarget length: {target_length:.2f} lf"
+                breakdown += f"\nUnit length: {unit_length:.2f} lf"
+                breakdown += f"\nUnits needed: {target_length:.2f} ÷ {unit_length:.2f} = {units_needed:.2f} units"
+                breakdown += f"\nTask time: {total_time_per_unit:.2f} min/unit × {units_needed:.2f} units = {total_time_per_unit * units_needed:.2f} min"
+                breakdown += f"\n+ Impacts: {impact_time:.2f} min → Total: {total_time:.2f} min"
 
-            elif mode == "Man Day":
+                if self.time_display_unit.get() == "hours":
+                    total_time /= 60
+                    breakdown += f"\n\nDisplayed in hours: {total_time:.2f} hours"
+
+                self.final_output_label.config(
+                    text=f"Total Time: {total_time:.2f} {self.time_display_unit.get()} to complete {target_length:.0f} lf"
+                )
+
+            elif mode == "Man Day (SF)":
                 total_available_time = 8 * 60  # 8 hours in minutes
                 effective_time = total_available_time - impact_time
                 units_completed = effective_time / total_time_per_unit if total_time_per_unit > 0 else 0
@@ -460,6 +550,22 @@ class LaborSimulatorApp:
 
                 self.final_output_label.config(
                     text=f"Total Production: {sqft_completed:.2f} sqft installed in 1 Man Day"
+                )
+                
+            elif mode == "Man Day (LF)":
+                total_available_time = 8 * 60  # 8 hours in minutes
+                effective_time = total_available_time - impact_time
+                units_completed = effective_time / total_time_per_unit if total_time_per_unit > 0 else 0
+                lf_completed = units_completed * unit_length  # Linear feet completed
+
+                breakdown += f"\nAvailable time: 8 hrs = {total_available_time} min"
+                breakdown += f"\n- Impacts: {impact_time:.2f} min → Working time = {effective_time:.2f} min"
+                breakdown += f"\nTime per unit: {total_time_per_unit:.2f} min"
+                breakdown += f"\nUnits completed: {effective_time:.2f} ÷ {total_time_per_unit:.2f} = {units_completed:.2f}"
+                breakdown += f"\nUnit length: {unit_length:.2f} lf → Total: {lf_completed:.2f} linear feet"
+
+                self.final_output_label.config(
+                    text=f"Total Production: {lf_completed:.2f} linear feet installed in 1 Man Day"
                 )
 
             self.breakdown_label.config(text=breakdown)
@@ -531,22 +637,36 @@ class LaborSimulatorApp:
                 excel_data["Impacts"] = pd.DataFrame(impact_data)
             
             # Simulation settings
+            mode = self.output_type_var.get()
             settings_data = [{
                 "Simulation Name": self.sim_name_entry.get(),
-                "Output Type": self.output_type_var.get(),
+                "Output Type": mode,
                 "Length (ft)": self.length_var.get(),
-                "Height (ft)": self.height_var.get(),
-                "Target Area (sqft)": self.target_area_var.get(),
                 "Time Display Unit": self.time_display_unit.get(),
-                "Export Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "Export Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "User": "Jmk125",  # Hardcoded username from your requirements
+                "Version": self.VERSION
             }]
+            
+            # Add height for Square-foot and Man Day (SF) modes
+            if mode in ["Square-foot", "Man Day (SF)"]:
+                settings_data[0]["Height (ft)"] = self.height_var.get()
+                
+            # Add target field with appropriate label
+            if mode == "Square-foot":
+                settings_data[0]["Target Area (sqft)"] = self.target_var.get()
+            elif mode == "Linear-Foot":
+                settings_data[0]["Target Length (lf)"] = self.target_var.get()
+                
             excel_data["Settings"] = pd.DataFrame(settings_data)
             
             # Create a worksheet with calculation results
             results_data = []
             
             material_unit = self.tasks[0]["material_unit_var"].get() if self.tasks else "unit"
-            unit_sqft = self.length_var.get() * self.height_var.get()
+            unit_length = self.length_var.get()
+            unit_height = self.height_var.get()
+            unit_sqft = unit_length * unit_height
             total_workers = len(self.workers)
             total_time_per_unit = 0
             
@@ -586,9 +706,8 @@ class LaborSimulatorApp:
                 })
             
             # Final calculation based on output type
-            mode = self.output_type_var.get()
             if mode == "Square-foot":
-                total_area = self.target_area_var.get()
+                total_area = self.target_var.get()
                 units_needed = total_area / unit_sqft if unit_sqft > 0 else 0
                 total_time = total_time_per_unit * units_needed + impact_time
                 
@@ -623,7 +742,55 @@ class LaborSimulatorApp:
                         "Time (min)": total_time / 60,
                         "Notes": f"Converted to hours: {total_time/60:.2f}"
                     })
-            else:  # Man Day
+            elif mode == "Linear-Foot":
+                target_length = self.target_var.get()
+                units_needed = target_length / unit_length if unit_length > 0 else 0
+                total_time = total_time_per_unit * units_needed + impact_time
+                
+                results_data.append({
+                    "Category": "Summary",
+                    "Name": "Target Length",
+                    "Time (min)": None,
+                    "Notes": f"{target_length:.2f} linear feet"
+                })
+                results_data.append({
+                    "Category": "Summary",
+                    "Name": "Unit Length",
+                    "Time (min)": None,
+                    "Notes": f"{unit_length:.2f} feet per unit"
+                })
+                results_data.append({
+                    "Category": "Summary",
+                    "Name": "Units Needed",
+                    "Time (min)": None,
+                    "Notes": f"{units_needed:.2f} units ({target_length:.2f} lf ÷ {unit_length:.2f} lf/unit)"
+                })
+                results_data.append({
+                    "Category": "Summary",
+                    "Name": "Total Task Time",
+                    "Time (min)": total_time_per_unit * units_needed,
+                    "Notes": f"{total_time_per_unit:.2f} min/unit × {units_needed:.2f} units"
+                })
+                results_data.append({
+                    "Category": "Summary",
+                    "Name": "Total Impact Time",
+                    "Time (min)": impact_time,
+                    "Notes": "Sum of all impacts"
+                })
+                results_data.append({
+                    "Category": "Summary",
+                    "Name": "Total Time",
+                    "Time (min)": total_time,
+                    "Notes": f"To complete {target_length:.2f} linear feet"
+                })
+                if self.time_display_unit.get() == "hours":
+                    results_data.append({
+                        "Category": "Summary",
+                        "Name": "Total Time (hours)",
+                        "Time (min)": total_time / 60,
+                        "Notes": f"Converted to hours: {total_time/60:.2f}"
+                    })
+            elif mode == "Man Day (SF)":
                 total_available_time = 8 * 60  # 8 hours in minutes
                 effective_time = total_available_time - impact_time
                 units_completed = effective_time / total_time_per_unit if total_time_per_unit > 0 else 0
@@ -649,9 +816,39 @@ class LaborSimulatorApp:
                 })
                 results_data.append({
                     "Category": "Summary",
-                    "Name": "Total Production",
+                    "Name": "Total Production (SF)",
                     "Time (min)": None,
                     "Notes": f"{sqft_completed:.2f} sqft ({units_completed:.2f} units × {unit_sqft:.2f} sqft/unit)"
+                })
+            elif mode == "Man Day (LF)":
+                total_available_time = 8 * 60  # 8 hours in minutes
+                effective_time = total_available_time - impact_time
+                units_completed = effective_time / total_time_per_unit if total_time_per_unit > 0 else 0
+                lf_completed = units_completed * unit_length
+                
+                results_data.append({
+                    "Category": "Summary",
+                    "Name": "Available Time",
+                    "Time (min)": total_available_time,
+                    "Notes": "8 hours = 480 minutes"
+                })
+                results_data.append({
+                    "Category": "Summary",
+                    "Name": "Effective Working Time",
+                    "Time (min)": effective_time,
+                    "Notes": f"Available time minus impacts: {total_available_time} - {impact_time:.2f}"
+                })
+                results_data.append({
+                    "Category": "Summary",
+                    "Name": "Units Completed",
+                    "Time (min)": None,
+                    "Notes": f"{units_completed:.2f} units ({effective_time:.2f} min ÷ {total_time_per_unit:.2f} min/unit)"
+                })
+                results_data.append({
+                    "Category": "Summary",
+                    "Name": "Total Production (LF)",
+                    "Time (min)": None,
+                    "Notes": f"{lf_completed:.2f} linear feet ({units_completed:.2f} units × {unit_length:.2f} lf/unit)"
                 })
             
             excel_data["Results"] = pd.DataFrame(results_data)
@@ -680,7 +877,7 @@ class LaborSimulatorApp:
         self.sim_name_entry.delete(0, tk.END)
         self.length_var.set(0)
         self.height_var.set(0)
-        self.target_area_var.set(0)
+        self.target_var.set(0)
         self.time_display_unit.set("minutes")
         self.output_type_var.set("Square-foot")
         self.material_unit_display.config(state="normal")
