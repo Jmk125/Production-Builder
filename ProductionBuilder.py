@@ -1,8 +1,3 @@
-# Because the full script is too long to include in a single message, I’ll split it into 2 parts.
-# Here is PART 1 (up to the add_impact and update_output definition):
-
-# === PART 1 ===
-
 import tkinter as tk
 from tkinter import ttk
 
@@ -208,7 +203,7 @@ class LaborSimulatorApp:
         self.impact_entries.append((name_var, time_var))
         self.update_output()
 
-  def update_output(self):
+    def update_output(self):
         if not self.tasks:
             return
 
@@ -283,3 +278,11 @@ class LaborSimulatorApp:
         except Exception as e:
             self.final_output_label.config(text="Total Time: ???")
             self.breakdown_label.config(text="Calculation Error")
+
+def main():
+    root = tk.Tk()
+    app = LaborSimulatorApp(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
